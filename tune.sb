@@ -1,0 +1,7 @@
+Sensor.SetMode(1,0)
+
+While "True"  
+  rawValue = Sensor.ReadRawValue(1,0)
+  TextWindow.WriteLine("DICK")
+  TextWindow.WriteLine(rawValue)
+EndWhile

@@ -1,0 +1,75 @@
+TotalRGBTH[0] = 220 'TH Value of Sensor 2
+TotalRGBTH[1] = 220 'TH Value of Sensor 3
+TotalRGBGGTH[1] = 306
+gyroValue = 0
+lightVal[0] = 0
+lightVal[1] = 0
+
+Last_Error[0] = 0
+Error[0] = 0
+
+Last_Error[1] = 0
+Error[1] = 0
+
+TP[0] = 0 '100
+
+Kp[0] = 0.03 '0.08
+Ki[0] = 0 '0.0008
+Kd[0] = 0.1 '0.8
+
+Kp[1] = 0.1
+Ki[1] = 0
+Kd[1] = 0
+Intergal[0] = 0
+
+Count[0] = 0
+Count[1] = 0
+
+B_Degree = 0
+
+turnToDegree = 0
+
+Sensor.SetMode(1, 0)
+Sensor.SetMode(2, 4)
+Sensor.SetMode(3, 4)
+
+Motor.Invert("C")
+
+Sub readVal
+  gyroValue  = Sensor.ReadRawValue(1,0)
+  rawValue = Sensor.ReadRaw(2,3)
+  rawValuei = Sensor.ReadRaw(3,3)
+  lightVal[0] = rawValue[0] + rawValue[1] + rawValue[2]
+  lightVal[1] = rawValuei[0] + rawValuei[1] + rawValuei[2]
+EndSub
+
+Sub PD
+  Error[0] = lightVal[0] - TotalRGBTH[0]
+  Intergal[0] = Error[0] + Intergal[0] *0.5
+  Derivative[0] = Error[0] - Last_Error[0]
+  Correction = (Error[0] * Kp[0]) + Derivative[0]*Kd[0] + Intergal[0]*Ki[0]
+  Motor.StartSync("BC",Math.Max(Math.Min((TP[0] + Correction),100),-100),Math.Max(Math.Min((TP[0] - Correction),100),-100))
+  Last_Error = Error
+EndSub
+
+Sub gyroTurns
+  readVal()
+  Error[1] = gyroValue - turnToDegree
+  Intergal[1] = Error[1] + Intergal[1] *0.5
+  Derivative[1] = Error[1] - Last_Error[1]
+  Correction = (Error[1] * Kp[1]) + Derivative[1]*Kd[1] + Intergal[1]*Ki[1]
+  Motor.StartSync("BC",Math.Max(Math.Min((TP[0] + Correction),100),-100),Math.Max(Math.Min((TP[0] - Correction),100),-100))
+  Last_Error = Error
+EndSub
+
+'Start of Running Code
+LCD.Clear()
+LCD.StopUpdate()
+LCD.Update()
+While "True"
+  turnToDegree = 90
+  gyroTurns()
+  LCD.Text(1,0,40,2,gyroValue)
+  LCD.Text(1,0,0,2,Correction)
+  LCD.Text(1,0,20,2,Error[1])
+EndWhile
