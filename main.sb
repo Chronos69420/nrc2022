@@ -1,7 +1,13 @@
 TotalRGBTH[0] = 220 'TH Value of Sensor 2
 TotalRGBTH[1] = 220 'TH Value of Sensor 3
+TotalRGBTH[2] = 220 'TH Value of Sensor 3
 TotalRGBGGTH[1] = 306
+
+gyroStart = 0
 gyroValue = 0
+gyroErr = 0
+gyroSet = 0
+
 lightVal[0] = 0
 lightVal[1] = 0
 
@@ -11,7 +17,7 @@ Error[0] = 0
 Last_Error[1] = 0
 Error[1] = 0
 
-TP[0] = 0 '100
+TP[0] = 100 '100
 
 Kp[0] = 0.03 '0.08
 Ki[0] = 0 '0.0008
@@ -32,15 +38,19 @@ turnToDegree = 0
 Sensor.SetMode(1, 0)
 Sensor.SetMode(2, 4)
 Sensor.SetMode(3, 4)
+Sensor.SetMode(4, 4)
 
 Motor.Invert("C")
 
 Sub readVal
-  gyroValue  = Sensor.ReadRawValue(1,0)
+  gyroValue  = Sensor.ReadRawValue(1,0) - gyroStart - gyroErr 
   rawValue = Sensor.ReadRaw(2,3)
-  rawValuei = Sensor.ReadRaw(3,3)
+  rawValue2 = Sensor.ReadRaw(3,3)
+  rawValue3 = Sensor.ReadRaw(4,4)
   lightVal[0] = rawValue[0] + rawValue[1] + rawValue[2]
-  lightVal[1] = rawValuei[0] + rawValuei[1] + rawValuei[2]
+  lightVal[1] = rawValue2[0] + rawValue2[1] + rawValue2[2]
+  lightVal[2] = rawValue3[0] + rawValue3[1] + rawValue3[2]
+
 EndSub
 
 Sub PD
@@ -52,6 +62,16 @@ Sub PD
   Last_Error = Error
 EndSub
 
+Sub gyroMove
+  readVal()
+  Error[1] = gyroValue
+  Intergal[1] = Error[1] + Intergal[1] * 0.5
+  Derivative[1] = Error[1] - Last_Error[1]
+  Correction = (Error[1] * Kp[1]) + Derivative[1]*Kd[1] + Intergal[1]*Ki[1]
+  Motor.StartSync("BC",Math.Max(Math.Min((TP[0] + Correction),100),-100),Math.Max(Math.Min((TP[0] - Correction),100),-100))
+  Last_Error = Error
+EndSub
+  
 Sub gyroTurns
   readVal()
   Error[1] = gyroValue - turnToDegree
@@ -62,14 +82,30 @@ Sub gyroTurns
   Last_Error = Error
 EndSub
 
+Sub gyroTune
+  readVal()
+  gyroErr = Sensor.ReadRawValue(1,0) - gyroStart - gyroSet
+EndSub
+
+Sub printGyroValues
+  LCD.Write(0,0, "Raw Gyro Value: " + Sensor.ReadRawValue(1,0))
+  LCD.Write(0,20, "Gyro Value: " + gyroValue)
+  LCD.Write(0,40, "Gyro Error: " + gyroErr)
+EndSub
+
 'Start of Running Code
 LCD.Clear()
 LCD.StopUpdate()
 LCD.Update()
-While "True"
-  turnToDegree = 90
+
+LCD.Write(0,0,"gay")
+
+readVal()
+gyroTune()
+
+turnToDegree = 0
+while "True"
+  readVal()
   gyroTurns()
-  LCD.Text(1,0,40,2,gyroValue)
-  LCD.Text(1,0,0,2,Correction)
-  LCD.Text(1,0,20,2,Error[1])
-EndWhile
+  printGyroValues()
+endwhile 
